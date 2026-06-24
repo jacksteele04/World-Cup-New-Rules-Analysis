@@ -17,7 +17,7 @@ Compares how FIFA's 2026 rule change affects group-stage elimination outcomes. T
 | 4 | H2H Results | Overall GD |
 
 ### Hydration Breaks Momentum
-Tests whether FIFA-mandated cooling breaks (triggered when WBGT > 28°C) measurably shift match momentum — shots, goal rates, and pressing intensity before vs. after each break.
+Tests whether FIFA-mandated hydration breaks — which occur in every group-stage match regardless of weather conditions — measurably shift match momentum: shots, goal rates, and pressing intensity before vs. after each break.
 
 ---
 
@@ -40,21 +40,30 @@ read.csv(here("data", "clean_fixtures.csv"))
 
 Never use bare relative paths like `"../../data/file.csv"`.
 
-### Tiebreaker Pipeline — Run in Order
+### Step 1 — Fetch / update data (run these first, shared across all analyses)
 
 ```r
-source("analyses/tiebreaker_rules/01_fetch_fixtures.R")        # Pull live match data
-source("analyses/tiebreaker_rules/02_calculate_groups.R")      # Compute group standings
-source("analyses/tiebreaker_rules/03_elimination_simulator.R") # Dual-ruleset elimination sim
-source("analyses/tiebreaker_rules/04_fetch_predictions.R")     # Build Poisson probability cache
-source("analyses/tiebreaker_rules/05_elimination_likelihood.R")# Weighted elimination risk
-source("analyses/tiebreaker_rules/06_analyze_gd_miracles.R")   # GD miracle analysis
+source("fetch/fetch_fixtures.R")    # Pull live match data → data/clean_fixtures.csv
+source("fetch/calculate_groups.R")  # Compute group standings → data/group_standings_R.csv
 ```
 
-### Hydration Breaks Pipeline
+### Step 2a — Tiebreaker analysis
 
-1. Populate `data/hydration_breaks.csv` with per-match shot/goal counts split before and after each break (see column guide at the top of `hydration_momentum.R`)
-2. Run `analyses/hydration_breaks/hydration_momentum.R`
+```r
+source("analyses/tiebreaker_rules/01_elimination_simulator.R") # Dual-ruleset elimination sim
+source("analyses/tiebreaker_rules/02_fetch_predictions.R")     # Build Poisson probability cache
+source("analyses/tiebreaker_rules/03_elimination_likelihood.R")# Weighted elimination risk
+source("analyses/tiebreaker_rules/04_analyze_gd_miracles.R")   # GD miracle analysis
+```
+
+### Step 2b — Hydration break analysis
+
+```r
+source("analyses/hydration_breaks/01_parse_goal_events.R") # Parse goal timings → data/goal_events.csv
+source("analyses/hydration_breaks/hydration_momentum.R")   # Momentum analysis → console
+```
+
+Populate `data/hydration_breaks.csv` with break minutes (and optionally shot/xG data) before running. See the column guide at the top of `hydration_momentum.R`.
 
 ---
 
@@ -69,19 +78,23 @@ World Cup/
 ├── data/                              ← all CSV inputs and outputs
 │   ├── clean_fixtures.csv             # [generated] All 2026 group-stage fixtures
 │   ├── group_standings_R.csv          # [generated] Current group standings
+│   ├── goal_events.csv                # [generated] Tidy goal events with minutes
 │   ├── elimination_scenarios.csv      # [generated] Elimination scenarios by ruleset
 │   ├── api_predictions_cache.csv      # [generated] Cached Poisson match predictions
-│   └── hydration_breaks.csv           # [manual] Per-match shot/goal splits around breaks
+│   └── hydration_breaks.csv           # [manual] Per-match break minutes + shot/xG data
+│
+├── fetch/                             ← run these to refresh data (shared across analyses)
+│   ├── fetch_fixtures.R               # Pulls live fixture data from worldcup26.ir
+│   └── calculate_groups.R             # Computes current group standings
 │
 ├── analyses/
 │   ├── tiebreaker_rules/
-│   │   ├── 01_fetch_fixtures.R        # Fetches live fixture data from worldcup26.ir
-│   │   ├── 02_calculate_groups.R      # Computes current group standings
-│   │   ├── 03_elimination_simulator.R # Core dual-ruleset elimination engine
-│   │   ├── 04_fetch_predictions.R     # Poisson/Elo match probability model
-│   │   ├── 05_elimination_likelihood.R# Weighted elimination risk output
-│   │   └── 06_analyze_gd_miracles.R   # GD miracle probability analysis
+│   │   ├── 01_elimination_simulator.R # Core dual-ruleset elimination engine
+│   │   ├── 02_fetch_predictions.R     # Poisson/Elo match probability model
+│   │   ├── 03_elimination_likelihood.R# Weighted elimination risk output
+│   │   └── 04_analyze_gd_miracles.R   # GD miracle probability analysis
 │   └── hydration_breaks/
+│       ├── 01_parse_goal_events.R     # Parses goal timings from clean_fixtures.csv
 │       └── hydration_momentum.R       # Cooling break momentum analysis
 │
 └── utils/
@@ -90,27 +103,27 @@ World Cup/
 
 ---
 
-## Tiebreaker Analysis — Script Details
+## Script Details
 
-### `01_fetch_fixtures.R`
+### `fetch/fetch_fixtures.R`
 Pulls the full fixture list from the `worldcup26.ir` API and writes/updates `data/clean_fixtures.csv`. Uses an upsert pattern — only writes rows that have changed, so re-running after a match finishes is safe.
 
-### `02_calculate_groups.R`
+### `fetch/calculate_groups.R`
 Reads `data/clean_fixtures.csv` and computes group standings (Pts, GD, GF, GA) for all finished matches, sorted in the standard FIFA tiebreaker order.
 
-### `03_elimination_simulator.R`
+### `01_elimination_simulator.R`
 The analytical core. For each team in each group, exhaustively simulates all possible remaining-match outcomes (3^n combinations) and checks survival under both rulesets:
 - **H2H check**: isolates tied teams, computes sub-table, applies +0.1 "infinite H2H advantage" trick for best-case analysis
 - **GD check**: applies +0.1 to points for best-case GD scenario
 - Outputs `data/elimination_scenarios.csv` with per-team, per-ruleset scenarios
 
-### `04_fetch_predictions.R`
+### `02_fetch_predictions.R`
 Builds `data/api_predictions_cache.csv` by running a Poisson model against live Elo ratings from `eloratings.net`. Host nations (USA, Mexico, Canada) receive a +100 Elo home-advantage bonus.
 
-### `05_elimination_likelihood.R`
+### `03_elimination_likelihood.R`
 Reads scenarios and cache, weights each elimination scenario by its Poisson probability, and prints a dashboard: teams already eliminated, teams at risk, and total "controversy count" (cases where rulesets disagree).
 
-### `06_analyze_gd_miracles.R`
+### `04_analyze_gd_miracles.R`
 For teams eliminated under H2H but not GD, runs a full 11×11 Poisson score matrix (14,641 combinations) over final-matchday games to calculate the probability of hitting the goal-difference swing needed to survive under classic rules.
 
 ---

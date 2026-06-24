@@ -1,5 +1,7 @@
-library(dplyr)
+﻿library(dplyr)
 library(here)
+
+source(here("config.R"))
 
 get_outcome_desc <- function(match_row, outcome) {
   h <- match_row$home_team_name_en
@@ -36,7 +38,7 @@ check_survives_gd <- function(team_target, matches) {
   }
   
   # The "Infinite GD" Trick: Automatically win any tiebreaker by having slightly more points
-  pts[team_target] <- pts[team_target] + 0.1
+  pts[team_target] <- pts[team_target] + ELO_MODEL$epsilon
   
   sorted_pts <- sort(pts, decreasing = TRUE)
   target_rank <- which(names(sorted_pts) == team_target)[1]
@@ -79,7 +81,7 @@ check_survives_h2h <- function(team_target, matches) {
   }
   
   # Infinite GD secondary tiebreaker trick
-  h2h_pts[team_target] <- h2h_pts[team_target] + 0.1
+  h2h_pts[team_target] <- h2h_pts[team_target] + ELO_MODEL$epsilon
   
   sorted_h2h <- sort(h2h_pts, decreasing = TRUE)
   target_rank_h2h <- which(names(sorted_h2h) == team_target)[1]
@@ -94,7 +96,7 @@ check_survives_h2h <- function(team_target, matches) {
 
 run_elimination_sim <- function() {
   cat("🔮 Initializing Dual-Simulation Mathematical Elimination Engine...\n")
-  df <- read.csv(here("data", "clean_fixtures.csv"), stringsAsFactors = FALSE)
+  df <- read.csv(here("data", "fixtures", "clean_fixtures.csv"), stringsAsFactors = FALSE)
   names(df) <- gsub("^games\\.", "", names(df))
   group_matches <- df %>% filter(type == "group")
   outcomes_matrix <- as.matrix(expand.grid(m1 = 0:2, m2 = 0:2))
@@ -258,7 +260,7 @@ run_elimination_sim <- function() {
     }
   }
   
-  write.csv(export_df, here("data", "elimination_scenarios.csv"), row.names = FALSE)
+  write.csv(export_df, here("data", "standings", "elimination_scenarios.csv"), row.names = FALSE)
   
   cat("\n=======================================================\n")
   cat("🏆 TOURNAMENT ELIMINATION SUMMARY 🏆\n")

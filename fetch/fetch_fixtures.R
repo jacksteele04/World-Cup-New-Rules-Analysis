@@ -1,4 +1,4 @@
-# Load necessary libraries (uncomment install.packages if you don't have them)
+﻿# Load necessary libraries (uncomment install.packages if you don't have them)
 # install.packages(c("dplyr", "jsonlite"))
 
 library(dplyr)
@@ -29,7 +29,7 @@ fetch_world_cup_fixtures <- function() {
   })
 }
 
-update_fixtures_csv <- function(new_fixtures, file_path = here("data", "clean_fixtures.csv")) {
+update_fixtures_csv <- function(new_fixtures, file_path = here("data", "fixtures", "clean_fixtures.csv")) {
   if (is.null(new_fixtures) || nrow(new_fixtures) == 0) {
     cat("⚠️ No new data to update.\n")
     return()
@@ -61,7 +61,7 @@ update_fixtures_csv <- function(new_fixtures, file_path = here("data", "clean_fi
       final_fixtures <- bind_rows(existing_fixtures, updated_or_new)
       
       # Sort by match ID or Date
-      final_fixtures <- final_fixtures %>% arrange(as.numeric(id))
+      final_fixtures <- final_fixtures %>% arrange(as.numeric(.data[[id_col]]))
       
       # Save the updated dataset
       write.csv(final_fixtures, file_path, row.names = FALSE)
@@ -79,4 +79,4 @@ update_fixtures_csv <- function(new_fixtures, file_path = here("data", "clean_fi
 
 # Execute the pipeline
 raw_fixtures <- fetch_world_cup_fixtures()
-update_fixtures_csv(raw_fixtures, here("data", "clean_fixtures.csv"))
+update_fixtures_csv(raw_fixtures, here("data", "fixtures", "clean_fixtures.csv"))

@@ -1,53 +1,23 @@
-library(dplyr)
+﻿library(dplyr)
 library(here)
 
-# Re-use Elo database fetcher
-get_elo_database <- function() {
-  cat("📡 Downloading Live World Football Elo Ratings...\n")
-  teams_raw <- suppressWarnings(readLines("https://www.eloratings.net/en.teams.tsv"))
-  teams_df <- do.call(rbind, lapply(strsplit(teams_raw, "\t"), function(x) {
-    if(length(x) >= 2) data.frame(Code=x[1], Name=x[2], stringsAsFactors=FALSE) else NULL
-  }))
-  world_raw <- suppressWarnings(readLines("https://www.eloratings.net/World.tsv"))
-  world_df <- do.call(rbind, lapply(strsplit(world_raw, "\t"), function(x) {
-    if(length(x) >= 4) data.frame(Code=x[3], Elo=as.numeric(x[4]), stringsAsFactors=FALSE) else NULL
-  }))
-  return(merge(teams_df, world_df, by="Code"))
-}
-
-clean_team_name <- function(n) {
-  n <- tolower(trimws(n))
-  if(n == "usa") return("united states")
-  if(n == "ir iran") return("iran")
-  if(n == "korea republic") return("south korea")
-  if(n == "côte d'ivoire") return("ivory coast")
-  return(n)
-}
-
-get_elo <- function(team_name, elo_db) {
-  name_clean <- clean_team_name(team_name)
-  db_clean <- tolower(elo_db$Name)
-  idx <- which(db_clean == name_clean)
-  if(length(idx) > 0) return(elo_db$Elo[idx[1]])
-  idx_fuzzy <- grep(name_clean, db_clean)
-  if(length(idx_fuzzy) > 0) return(elo_db$Elo[idx_fuzzy[1]])
-  return(1500)
-}
+source(here("config.R"))
+source(here("standardization", "team_names.R"))
+source(here("standardization", "elo.R"))
 
 get_poisson_lambdas <- function(h_name, a_name, elo_db) {
-  h_elo <- get_elo(h_name, elo_db)
-  a_elo <- get_elo(a_name, elo_db)
-  
-  hosts <- c("united states", "usa", "mexico", "canada")
-  h_clean <- clean_team_name(h_name)
-  a_clean <- clean_team_name(a_name)
-  if(h_clean %in% hosts && !(a_clean %in% hosts)) h_elo <- h_elo + 100
-  else if(a_clean %in% hosts && !(h_clean %in% hosts)) a_elo <- a_elo + 100
-  
-  dr <- h_elo - a_elo
-  h_xg <- 1.25 * (10 ^ (dr / 1000))
-  a_xg <- 1.25 * (10 ^ (-dr / 1000))
-  return(list(h=h_xg, a=a_xg))
+  h_elo <- get_elo(h_name, elo_db); if (is.na(h_elo)) h_elo <- ELO_MODEL$default_rating
+  a_elo <- get_elo(a_name, elo_db); if (is.na(a_elo)) a_elo <- ELO_MODEL$default_rating
+
+  h_clean <- elo_name(h_name)
+  a_clean <- elo_name(a_name)
+  if (h_clean %in% TOURNAMENT$host_nations && !(a_clean %in% TOURNAMENT$host_nations)) h_elo <- h_elo + ELO_MODEL$host_bonus
+  else if (a_clean %in% TOURNAMENT$host_nations && !(h_clean %in% TOURNAMENT$host_nations)) a_elo <- a_elo + ELO_MODEL$host_bonus
+
+  dr  <- h_elo - a_elo
+  h_xg <- ELO_MODEL$xg_multiplier * (10 ^ (dr / ELO_MODEL$elo_divisor))
+  a_xg <- ELO_MODEL$xg_multiplier * (10 ^ (-dr / ELO_MODEL$elo_divisor))
+  list(h = h_xg, a = a_xg)
 }
 
 analyze_gd_miracles <- function() {
@@ -57,8 +27,8 @@ analyze_gd_miracles <- function() {
   
   elo_db <- get_elo_database()
   
-  df <- read.csv(here("data", "elimination_scenarios.csv"), stringsAsFactors = FALSE)
-  fixtures <- read.csv(here("data", "clean_fixtures.csv"), stringsAsFactors = FALSE)
+  df <- read.csv(here("data", "standings", "elimination_scenarios.csv"), stringsAsFactors = FALSE)
+  fixtures <- read.csv(here("data", "fixtures", "clean_fixtures.csv"), stringsAsFactors = FALSE)
   names(fixtures) <- gsub("^games\\.", "", names(fixtures))
   
   # Find controversies (Eliminated by H2H, but NOT eliminated by GD)

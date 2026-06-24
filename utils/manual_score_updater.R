@@ -1,8 +1,8 @@
-library(dplyr)
+﻿library(dplyr)
 library(here)
 
 update_scores_interactively <- function() {
-  csv_file <- here("data", "clean_fixtures.csv")
+  csv_file <- here("data", "fixtures", "clean_fixtures.csv")
   
   if (!file.exists(csv_file)) {
     stop(sprintf("❌ Error: Could not find %s. Please make sure you have it in your folder.", csv_file))

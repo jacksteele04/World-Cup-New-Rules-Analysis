@@ -1,4 +1,4 @@
-library(dplyr)
+﻿library(dplyr)
 library(here)
 
 get_probability <- function(h_team, a_team, outcome_code, cache_df) {
@@ -20,8 +20,8 @@ get_probability <- function(h_team, a_team, outcome_code, cache_df) {
 }
 
 analyze_elimination_likelihood <- function() {
-  scen_file <- here("data", "elimination_scenarios.csv")
-  cache_file <- here("data", "api_predictions_cache.csv")
+  scen_file <- here("data", "standings", "elimination_scenarios.csv")
+  cache_file <- here("data", "standings", "api_predictions_cache.csv")
 
   if (!file.exists(scen_file)) stop("❌ Error: data/elimination_scenarios.csv not found.")
   if (!file.exists(cache_file)) stop("❌ Error: data/api_predictions_cache.csv not found.")
