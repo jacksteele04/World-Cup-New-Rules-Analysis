@@ -1,6 +1,6 @@
 # World Cup 2026 Analysis
 
-An R-based analysis project covering multiple aspects of the 2026 FIFA World Cup group stage. The tournament expanded to 48 teams across 12 groups of 4, with the top 3 in each group advancing.
+An R-based analysis project covering multiple aspects of the 2026 FIFA World Cup group stage. The tournament expanded to 48 teams across 12 groups of 4.
 
 ---
 
