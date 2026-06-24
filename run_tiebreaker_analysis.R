@@ -1,12 +1,12 @@
 library(here)
 
-rscript <- file.path(R.home("bin"), "Rscript")
-
 run_step <- function(n, total, label, script) {
   cat(sprintf("\n[%d/%d] %s\n%s\n", n, total, label, strrep("-", 50)))
-  ret <- system2(rscript, args = here(script))
-  if (ret != 0) stop(sprintf("Script failed (exit %d): %s", ret, script))
-  invisible(ret)
+  tryCatch(
+    source(here(script)),
+    error = function(e) stop(sprintf("Script failed: %s\n  %s", script, conditionMessage(e)))
+  )
+  invisible(NULL)
 }
 
 cat("============================================\n")

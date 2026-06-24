@@ -5,7 +5,7 @@
 # matching is needed across this project:
 #
 #   norm_name()  — compact alphanumeric token for joining across data sources
-#                  (worldcup26.ir <-> TheStatsAPI <-> StatsBomb)
+#                  (TheStatsAPI <-> StatsBomb)
 #
 #   elo_name()   — maps any known variant to eloratings.net's naming convention
 #                  for Elo database lookups

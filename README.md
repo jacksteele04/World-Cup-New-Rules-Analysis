@@ -84,7 +84,7 @@ World Cup/
 │   └── hydration_breaks.csv           # [manual] Per-match break minutes + shot/xG data
 │
 ├── fetch/                             ← run these to refresh data (shared across analyses)
-│   ├── fetch_fixtures.R               # Pulls live fixture data from worldcup26.ir
+│   ├── fetch_fixtures.R               # Pulls live fixture data from TheStatsAPI
 │   └── calculate_groups.R             # Computes current group standings
 │
 ├── analyses/
@@ -106,7 +106,7 @@ World Cup/
 ## Script Details
 
 ### `fetch/fetch_fixtures.R`
-Pulls the full fixture list from the `worldcup26.ir` API and writes/updates `data/clean_fixtures.csv`. Uses an upsert pattern — only writes rows that have changed, so re-running after a match finishes is safe.
+Pulls the full fixture list from TheStatsAPI and writes/updates `data/fixtures/clean_fixtures.csv`. Uses an upsert pattern — only writes rows that have changed, so re-running after a match finishes is safe.
 
 ### `fetch/calculate_groups.R`
 Reads `data/clean_fixtures.csv` and computes group standings (Pts, GD, GF, GA) for all finished matches, sorted in the standard FIFA tiebreaker order.

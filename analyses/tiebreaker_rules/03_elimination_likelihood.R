@@ -1,4 +1,4 @@
-﻿library(dplyr)
+library(dplyr)
 library(here)
 
 get_probability <- function(h_team, a_team, outcome_code, cache_df) {

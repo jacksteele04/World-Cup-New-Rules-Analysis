@@ -1,4 +1,4 @@
-﻿library(httr)
+library(httr)
 library(jsonlite)
 library(dplyr)
 library(here)
@@ -9,7 +9,7 @@ source(here("standardization", "api_helpers.R"))
 # =============================================================================
 # fetch_shotmap_thestatsapi.R
 # Fetches per-shot xG data for every finished match from TheStatsAPI.
-# Caches results in data/shotmap_thestatsapi.csv — skips already-fetched matches.
+# Caches results in data/shotmap_thestatsapi.csv â€” skips already-fetched matches.
 # =============================================================================
 
 OUT_FILE <- here("data", "shotmaps", "shotmap_thestatsapi.csv")
@@ -44,13 +44,12 @@ if (file.exists(OUT_FILE)) {
 
 pending <- finished[!as.character(finished$match_id) %in% done_ids, ]
 
-cat(sprintf("📊 %d finished matches — %d cached, %d to fetch\n",
+cat(sprintf("ðŸ“Š %d finished matches â€” %d cached, %d to fetch\n",
             nrow(finished), length(done_ids), nrow(pending)))
 
 if (nrow(pending) == 0) {
-  cat("✨ Already up to date — no new shots to fetch.\n")
-  quit(save = "no", status = 0)
-}
+  cat("âœ¨ Already up to date â€” no new shots to fetch.\n")
+  }
 
 new_shots <- list()
 
@@ -61,12 +60,12 @@ for (i in seq_len(nrow(pending))) {
 
   shots <- tryCatch(
     fetch_shotmap(row$match_id, row$home_team, row$away_team, api_key),
-    error = function(e) { cat(sprintf(" ❌ %s\n", e$message)); NULL }
+    error = function(e) { cat(sprintf(" âŒ %s\n", e$message)); NULL }
   )
 
   if (!is.null(shots)) {
     new_shots[[length(new_shots) + 1]] <- shots
-    cat(sprintf(" ✅ %d shots\n", nrow(shots)))
+    cat(sprintf(" âœ… %d shots\n", nrow(shots)))
   }
 
   if (i < nrow(pending)) Sys.sleep(API$sleep_between)
@@ -75,8 +74,8 @@ for (i in seq_len(nrow(pending))) {
 if (length(new_shots) > 0) {
   combined <- bind_rows(cache, bind_rows(new_shots))
   write.csv(combined, OUT_FILE, row.names = FALSE)
-  cat(sprintf("\n✅ %s updated — %d new shot records added.\n",
+  cat(sprintf("\nâœ… %s updated â€” %d new shot records added.\n",
               basename(OUT_FILE), nrow(bind_rows(new_shots))))
 } else {
-  cat("⚠️  No new shot data retrieved.\n")
+  cat("âš ï¸  No new shot data retrieved.\n")
 }

@@ -1,4 +1,4 @@
-﻿library(dplyr)
+library(dplyr)
 library(here)
 
 update_scores_interactively <- function() {
@@ -8,15 +8,11 @@ update_scores_interactively <- function() {
     stop(sprintf("❌ Error: Could not find %s. Please make sure you have it in your folder.", csv_file))
   }
   
-  # Read the clean CSV
   df <- read.csv(csv_file, stringsAsFactors = FALSE)
-  # Ensure column names don't have the 'games.' prefix
-  names(df) <- gsub("^games\\.", "", names(df))
-  
-  # Find all matches that are NOT finished, and sort them chronologically
+
   unplayed_matches <- df %>%
     filter(finished == "FALSE" | finished == FALSE) %>%
-    arrange(as.numeric(matchday), id)
+    arrange(as.numeric(matchday), match_id)
   
   if (nrow(unplayed_matches) == 0) {
     cat("✨ All fixtures in the CSV are already marked as finished!\n")
@@ -30,7 +26,7 @@ update_scores_interactively <- function() {
   
   for (i in 1:nrow(unplayed_matches)) {
     match_row <- unplayed_matches[i, ]
-    match_id <- match_row$id
+    match_id <- match_row$match_id
     h_team <- match_row$home_team_name_en
     a_team <- match_row$away_team_name_en
     
@@ -68,7 +64,7 @@ update_scores_interactively <- function() {
     }
     
     # Update the master dataframe
-    df_idx <- which(df$id == match_id)
+    df_idx <- which(df$match_id == match_id)
     df$home_score[df_idx] <- h_score
     df$away_score[df_idx] <- a_score
     df$finished[df_idx] <- "TRUE"

@@ -1,4 +1,4 @@
-﻿library(dplyr)
+library(dplyr)
 library(here)
 
 source(here("config.R"))

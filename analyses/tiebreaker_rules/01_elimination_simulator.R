@@ -1,4 +1,4 @@
-﻿library(dplyr)
+library(dplyr)
 library(here)
 
 source(here("config.R"))
@@ -97,7 +97,6 @@ check_survives_h2h <- function(team_target, matches) {
 run_elimination_sim <- function() {
   cat("🔮 Initializing Dual-Simulation Mathematical Elimination Engine...\n")
   df <- read.csv(here("data", "fixtures", "clean_fixtures.csv"), stringsAsFactors = FALSE)
-  names(df) <- gsub("^games\\.", "", names(df))
   group_matches <- df %>% filter(type == "group")
   outcomes_matrix <- as.matrix(expand.grid(m1 = 0:2, m2 = 0:2))
   

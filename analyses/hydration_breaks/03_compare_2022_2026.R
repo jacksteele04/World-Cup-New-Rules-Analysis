@@ -1,4 +1,4 @@
-﻿library(dplyr)
+library(dplyr)
 library(here)
 
 source(here("config.R"))
@@ -68,7 +68,7 @@ schedule_22 <- shots_22 %>%
 
 fixtures_22 <- schedule_22 %>% select(match_id, home_team_id, away_team_id)
 
-# 2026: use thestatsapi_id as match_id (drop the worldcup26.ir integer match_id)
+# 2026: use thestatsapi_id as match_id for shot join
 breaks_26_shots <- breaks_26 %>%
   select(-match_id) %>%
   rename(match_id = thestatsapi_id) %>%

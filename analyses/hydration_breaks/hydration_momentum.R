@@ -1,4 +1,4 @@
-﻿library(dplyr)
+library(dplyr)
 library(here)
 
 source(here("config.R"))
@@ -63,7 +63,7 @@ load_fixtures <- function() {
 }
 
 # -----------------------------------------------------------------------------
-# TIER 1 — GOAL METRICS (from goal_events.csv, keyed by worldcup26 match_id)
+# TIER 1 — GOAL METRICS (from goal_events.csv, keyed by TheStatsAPI match_id)
 # -----------------------------------------------------------------------------
 
 compute_game_state <- function(df_breaks, df_goals) {

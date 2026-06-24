@@ -1,4 +1,4 @@
-﻿library(httr)
+library(httr)
 library(jsonlite)
 library(dplyr)
 library(here)
@@ -8,7 +8,7 @@ source(here("config.R"))
 # =============================================================================
 # fetch_shotmap_statsbomb_2022.R
 # Downloads 2022 World Cup shot data from StatsBomb open data (GitHub).
-# No API key required — data is publicly available under open licence.
+# No API key required â€” data is publicly available under open licence.
 #
 # Source: https://github.com/statsbomb/open-data
 # Output: data/shotmap_statsbomb_2022.csv
@@ -29,15 +29,15 @@ sb_get <- function(url) {
 }
 
 # -----------------------------------------------------------------------------
-# Step 1 — Get group-stage match list
+# Step 1 â€” Get group-stage match list
 # -----------------------------------------------------------------------------
 
-cat("📡 Fetching 2022 World Cup match list from StatsBomb...\n")
+cat("ðŸ“¡ Fetching 2022 World Cup match list from StatsBomb...\n")
 matches_raw <- sb_get(MATCHES_URL)
 matches     <- as.data.frame(matches_raw)
 
 gs <- matches[matches$competition_stage.name == "Group Stage", ]
-cat(sprintf("✅ %d group-stage matches found.\n\n", nrow(gs)))
+cat(sprintf("âœ… %d group-stage matches found.\n\n", nrow(gs)))
 
 # Load existing cache to skip already-fetched matches
 if (file.exists(OUT_FILE)) {
@@ -49,16 +49,15 @@ if (file.exists(OUT_FILE)) {
 }
 
 pending <- gs[!as.character(gs$match_id) %in% done_ids, ]
-cat(sprintf("📊 %d group matches — %d cached, %d to fetch\n",
+cat(sprintf("ðŸ“Š %d group matches â€” %d cached, %d to fetch\n",
             nrow(gs), length(done_ids), nrow(pending)))
 
 if (nrow(pending) == 0) {
-  cat("✨ Already up to date.\n")
-  quit(save = "no", status = 0)
-}
+  cat("âœ¨ Already up to date.\n")
+  }
 
 # -----------------------------------------------------------------------------
-# Step 2 — Download events and extract shots for each match
+# Step 2 â€” Download events and extract shots for each match
 # -----------------------------------------------------------------------------
 
 new_shots <- list()
@@ -78,7 +77,7 @@ for (i in seq_len(nrow(pending))) {
   cat(sprintf("  [%d/%d] %s vs %s...", i, nrow(pending), home, away))
 
   events <- tryCatch(sb_get(sprintf(EVENTS_URL, mid)),
-                     error = function(e) { cat(sprintf(" ❌ %s\n", e$message)); NULL })
+                     error = function(e) { cat(sprintf(" âŒ %s\n", e$message)); NULL })
   if (is.null(events)) next
 
   # Filter to shot events
@@ -106,20 +105,20 @@ for (i in seq_len(nrow(pending))) {
   shots$is_on_target <- shots$result %in% c("Goal", "Saved")
 
   new_shots[[length(new_shots) + 1]] <- shots
-  cat(sprintf(" ✅ %d shots\n", nrow(shots)))
+  cat(sprintf(" âœ… %d shots\n", nrow(shots)))
 
   if (i < nrow(pending)) Sys.sleep(0.5)
 }
 
 # -----------------------------------------------------------------------------
-# Step 3 — Write cache
+# Step 3 â€” Write cache
 # -----------------------------------------------------------------------------
 
 if (length(new_shots) > 0) {
   combined <- bind_rows(cache, bind_rows(new_shots))
   write.csv(combined, OUT_FILE, row.names = FALSE)
-  cat(sprintf("\n✅ %s written — %d shot records across %d matches.\n",
+  cat(sprintf("\nâœ… %s written â€” %d shot records across %d matches.\n",
               basename(OUT_FILE), nrow(combined), length(unique(combined$match_id))))
 } else {
-  cat("⚠️  No shot data retrieved.\n")
+  cat("âš ï¸  No shot data retrieved.\n")
 }

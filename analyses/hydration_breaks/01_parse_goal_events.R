@@ -1,7 +1,7 @@
-﻿library(dplyr)
+library(dplyr)
 library(here)
 
-# Parses the scorer string formats produced by the worldcup26.ir API into
+# Parses scorer string formats into
 # individual scorer tokens. Handles four formats:
 #   {"J. Quiñones 9'","R. Jiménez 67'"}   <- single quotes around values
 #   {""I.B. Hwang 67'"",""H.G. Oh 80'""}  <- doubled internal quotes
@@ -29,7 +29,6 @@ parse_goal_events <- function() {
   cat("⚽ Parsing goal events from clean_fixtures.csv...\n")
 
   df <- read.csv(here("data", "fixtures", "clean_fixtures.csv"), stringsAsFactors = FALSE)
-  names(df) <- gsub("^games\\.", "", names(df))
 
   finished <- df %>% filter((finished == "TRUE" | finished == TRUE), type == "group")
 

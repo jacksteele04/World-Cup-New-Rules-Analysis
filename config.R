@@ -9,7 +9,6 @@ library(here)
 
 TOURNAMENT <- list(
   season                = 2026,
-  worldcupir_url        = "https://worldcup26.ir/get/games",
   thestatsapi_comp_id   = "comp_6107",
   thestatsapi_season_id = "sn_118868",
   host_nations          = c("united states", "mexico", "canada")

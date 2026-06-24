@@ -1,4 +1,4 @@
-﻿library(dplyr)
+library(dplyr)
 library(here)
 
 source(here("config.R"))
@@ -29,8 +29,7 @@ analyze_gd_miracles <- function() {
   
   df <- read.csv(here("data", "standings", "elimination_scenarios.csv"), stringsAsFactors = FALSE)
   fixtures <- read.csv(here("data", "fixtures", "clean_fixtures.csv"), stringsAsFactors = FALSE)
-  names(fixtures) <- gsub("^games\\.", "", names(fixtures))
-  
+
   # Find controversies (Eliminated by H2H, but NOT eliminated by GD)
   # This implies they survive under "Infinite GD Limit"
   h2h_scen <- df %>% filter(RuleSet == "H2H" & Status == "At Risk")

@@ -1,4 +1,4 @@
-﻿library(httr)
+library(httr)
 library(jsonlite)
 library(dplyr)
 library(here)
@@ -63,7 +63,7 @@ normalize_fixtures <- function(df) {
     matchday       = pick("matchday"),
     date           = pick("utc_date", "date"),
     status         = pick("status"),
-    group          = pick("group", "stage.name"),
+    group          = pick(c("group_label", "group", "stage_name")),
     home_team_id   = pick("home_team.id"),
     away_team_id   = pick("away_team.id"),
     home_team      = pick("home_team.name"),
@@ -92,7 +92,7 @@ update_fixtures_csv <- function(new_fixtures) {
     if (nrow(updated_or_new) > 0) {
       cat(sprintf("📝 %d updated or new matches found. Applying...\n", nrow(updated_or_new)))
       existing <- existing[!(existing$match_id %in% updated_or_new$match_id), ]
-      combined <- bind_rows(existing, updated_or_new) %>% arrange(as.numeric(match_id))
+      combined <- bind_rows(existing, updated_or_new) %>% arrange(matchday, date)
       write.csv(combined, OUT_FILE, row.names = FALSE)
       cat(sprintf("✅ %s updated.\n", OUT_FILE))
     } else {
@@ -100,7 +100,7 @@ update_fixtures_csv <- function(new_fixtures) {
     }
   } else {
     cat(sprintf("🆕 Creating %s...\n", OUT_FILE))
-    new_fixtures %>% arrange(as.numeric(match_id)) %>%
+    new_fixtures %>% arrange(matchday, date) %>%
       write.csv(OUT_FILE, row.names = FALSE)
     cat(sprintf("✅ Exported to: %s\n", OUT_FILE))
   }

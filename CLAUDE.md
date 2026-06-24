@@ -16,7 +16,7 @@ World Cup/
 ├── config.R                           ← ALL constants: API IDs, Elo model params, break minutes
 ├── data/                              ← all CSV inputs and outputs
 │   ├── fixtures/                      ← raw match schedules
-│   │   ├── clean_fixtures.csv         ← 2026 fixtures (worldcup26.ir)
+│   │   ├── clean_fixtures.csv         ← 2026 fixtures (TheStatsAPI)
 │   │   ├── clean_fixtures_thestatsapi.csv ← 2026 fixtures (TheStatsAPI)
 │   │   └── clean_fixtures_thestatsapi_2022.csv ← 2022 fixtures (TheStatsAPI)
 │   ├── shotmaps/                      ← shot-level data
@@ -181,7 +181,7 @@ When adding new teams, update both functions in `standardization/team_names.R`.
 
 | File | Source | Description |
 |---|---|---|
-| `data/fixtures/clean_fixtures.csv` | worldcup26.ir API | 2026 group-stage fixtures with scores |
+| `data/fixtures/clean_fixtures.csv` | TheStatsAPI | 2026 group-stage fixtures with scores |
 | `data/fixtures/clean_fixtures_thestatsapi.csv` | TheStatsAPI | 2026 fixtures (shot data join key) |
 | `data/fixtures/clean_fixtures_thestatsapi_2022.csv` | TheStatsAPI | 2022 Qatar fixtures |
 | `data/standings/group_standings_R.csv` | `calculate_groups.R` | Standings sorted by Pts/GD/GF |

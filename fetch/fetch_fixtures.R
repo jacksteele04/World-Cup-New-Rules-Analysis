@@ -1,82 +1,121 @@
-﻿# Load necessary libraries (uncomment install.packages if you don't have them)
-# install.packages(c("dplyr", "jsonlite"))
-
-library(dplyr)
+library(httr)
 library(jsonlite)
+library(dplyr)
 library(here)
 
-fetch_world_cup_fixtures <- function() {
-  endpoint <- "https://worldcup26.ir/get/games"
-  cat("📡 Contacting worldcup26.ir for 2026 fixtures...\n")
-  
-  # Suppress warnings for self-signed certificates if any
-  tryCatch({
-    # jsonlite::fromJSON automatically parses the JSON into a clean R dataframe
-    data <- fromJSON(endpoint, flatten = TRUE)
-    
-    # Extract the dataframe from the response
-    if ("data" %in% names(data)) {
-      fixtures <- as.data.frame(data$data)
-    } else {
-      fixtures <- as.data.frame(data)
-    }
-    
-    cat("✅ Successfully pulled data from API!\n")
-    return(fixtures)
-  }, error = function(e) {
-    cat(sprintf("❌ Network/HTTP Error occurred: %s\n", e$message))
-    return(NULL)
-  })
+source(here("config.R"))
+source(here("standardization", "validation.R"))
+source(here("standardization", "api_helpers.R"))
+
+# =============================================================================
+# fetch_fixtures.R
+# Pulls 2026 World Cup fixtures from TheStatsAPI and upserts into
+# data/fixtures/clean_fixtures.csv
+#
+# Output schema:
+#   match_id, matchday, date, group, type, home_team_id, away_team_id,
+#   home_team_name_en, away_team_name_en, home_score, away_score, status, finished
+#
+# Requires: THESTATSAPI_KEY set in .Renviron
+# IDs sourced from config.R: TOURNAMENT$thestatsapi_*
+# =============================================================================
+
+OUT_FILE <- here("data", "fixtures", "clean_fixtures.csv")
+
+fetch_all_fixtures <- function(api_key) {
+  cat("📡 Fetching 2026 World Cup fixtures from TheStatsAPI...\n")
+  all_pages <- list()
+  page      <- 1
+
+  repeat {
+    resp <- tsa_get("/football/matches", api_key,
+      competition_id = TOURNAMENT$thestatsapi_comp_id,
+      season_id      = TOURNAMENT$thestatsapi_season_id,
+      per_page       = API$page_size,
+      page           = page
+    )
+
+    batch <- resp$data
+    if (is.null(batch) || length(batch) == 0) break
+
+    all_pages[[page]] <- as.data.frame(batch)
+    total_pages       <- resp$meta$total_pages
+    cat(sprintf("  Page %d / %d — %d matches\n", page, total_pages, nrow(all_pages[[page]])))
+
+    if (page >= total_pages) break
+    page <- page + 1
+    Sys.sleep(0.5)
+  }
+
+  if (length(all_pages) == 0) stop("No fixture data returned from API.")
+  bind_rows(all_pages)
 }
 
-update_fixtures_csv <- function(new_fixtures, file_path = here("data", "fixtures", "clean_fixtures.csv")) {
+normalize_fixtures <- function(df) {
+  pick <- function(preferred, fallback = NULL) {
+    cols  <- c(preferred, fallback)
+    hit   <- cols[cols %in% names(df)]
+    if (length(hit) == 0) return(NA_character_)
+    df[[hit[1]]]
+  }
+
+  out <- data.frame(
+    match_id          = pick("id"),
+    matchday          = pick("matchday"),
+    date              = pick("utc_date", "date"),
+    group             = pick(c("group_label", "group", "stage_name")),
+    type              = "group",
+    home_team_id      = pick("home_team.id"),
+    away_team_id      = pick("away_team.id"),
+    home_team_name_en = pick("home_team.name"),
+    away_team_name_en = pick("away_team.name"),
+    home_score        = pick("score.home"),
+    away_score        = pick("score.away"),
+    status            = pick("status"),
+    stringsAsFactors  = FALSE
+  )
+  out$finished <- out$status == "finished"
+  out
+}
+
+update_fixtures_csv <- function(new_fixtures) {
   if (is.null(new_fixtures) || nrow(new_fixtures) == 0) {
-    cat("⚠️ No new data to update.\n")
-    return()
+    cat("⚠️  No data to write.\n"); return()
   }
-  
-  if (file.exists(file_path)) {
-    cat(sprintf("🔄 Found existing %s, checking for out-of-date matches...\n", file_path))
-    
-    existing_fixtures <- read.csv(file_path, stringsAsFactors = FALSE)
-    
-    # Dynamically detect if the ID column is named 'id' or 'games.id'
-    id_col <- if("games.id" %in% names(new_fixtures)) "games.id" else "id"
-    
-    # Ensure ALL columns are characters so the strict dplyr join doesn't fail on type mismatches 
-    # (e.g. API returns string "2", but CSV reads integer 2)
+
+  if (file.exists(OUT_FILE)) {
+    cat(sprintf("🔄 Existing %s found — checking for changes...\n", basename(OUT_FILE)))
+    existing <- read.csv(OUT_FILE, stringsAsFactors = FALSE)
+
     new_fixtures[] <- lapply(new_fixtures, as.character)
-    existing_fixtures[] <- lapply(existing_fixtures, as.character)
-    
-    # Identify which records in the new data are actually different or entirely new
-    updated_or_new <- suppressMessages(anti_join(new_fixtures, existing_fixtures))
-    
+    existing[]     <- lapply(existing, as.character)
+
+    updated_or_new <- suppressMessages(anti_join(new_fixtures, existing))
+
     if (nrow(updated_or_new) > 0) {
-      cat(sprintf("📝 Found %d updated or new matches. Applying changes...\n", nrow(updated_or_new)))
-      
-      # Upsert logic: Remove old versions of the updated matches based on their dynamic ID
-      existing_fixtures <- existing_fixtures[!(existing_fixtures[[id_col]] %in% updated_or_new[[id_col]]), ]
-      
-      # Bind the new/updated matches
-      final_fixtures <- bind_rows(existing_fixtures, updated_or_new)
-      
-      # Sort by match ID or Date
-      final_fixtures <- final_fixtures %>% arrange(as.numeric(.data[[id_col]]))
-      
-      # Save the updated dataset
-      write.csv(final_fixtures, file_path, row.names = FALSE)
-      cat(sprintf("✅ Success! %s has been updated.\n", file_path))
+      cat(sprintf("📝 %d updated or new matches found. Applying...\n", nrow(updated_or_new)))
+      existing <- existing[!(existing$match_id %in% updated_or_new$match_id), ]
+      combined <- bind_rows(existing, updated_or_new) %>% arrange(matchday, date)
+      write.csv(combined, OUT_FILE, row.names = FALSE)
+      cat(sprintf("✅ %s updated.\n", basename(OUT_FILE)))
     } else {
-      cat("✨ Everything is already up to date! No changes written to CSV.\n")
+      cat("✨ Already up to date — no changes written.\n")
     }
-    
   } else {
-    cat(sprintf("🆕 Creating new file: %s...\n", file_path))
-    write.csv(new_fixtures, file_path, row.names = FALSE)
-    cat(sprintf("✅ Success! Clean data exported to: %s\n", file_path))
+    cat(sprintf("🆕 Creating %s...\n", basename(OUT_FILE)))
+    new_fixtures %>% arrange(matchday, date) %>%
+      write.csv(OUT_FILE, row.names = FALSE)
+    cat(sprintf("✅ Exported to: %s\n", OUT_FILE))
   }
 }
 
-# Execute the pipeline
-raw_fixtures <- fetch_world_cup_fixtures()
-update_fixtures_csv(raw_fixtures, here("data", "fixtures", "clean_fixtures.csv"))
+api_key <- get_api_key()
+raw     <- fetch_all_fixtures(api_key)
+clean   <- normalize_fixtures(raw)
+
+cat(sprintf("\n📊 %d total fixtures (%d finished, %d group stage matchday 1–3).\n",
+            nrow(clean),
+            sum(clean$finished, na.rm = TRUE),
+            sum(clean$matchday %in% 1:3, na.rm = TRUE)))
+
+update_fixtures_csv(clean)
